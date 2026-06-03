@@ -1,0 +1,21 @@
+# Segredos — NUNCA subir pro GitHub
+.env
+
+# Banco de dados SQLite
+*.db
+
+# Arquivos do Python
+__pycache__/
+*.pyc
+
+# Ambiente virtual
+.venv/
+venv/
+
+# Configuracao local do Claude Code (pessoal, nao versionar)
+.claude/
+
+# Arquivos de editores/sistema
+.vscode/
+.idea/
+.DS_Store

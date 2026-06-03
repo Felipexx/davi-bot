@@ -1,0 +1,113 @@
+"""
+whatsapp.py
+-----------
+Funções pra ENVIAR mensagens pelo WhatsApp usando a API oficial da Meta
+(WhatsApp Cloud API). Tudo que fala com a Meta pra mandar mensagem mora aqui.
+
+Dois tipos de envio:
+1) Texto livre  -> só funciona dentro da "janela de 24h" (veja observação abaixo).
+2) Template     -> mensagem pré-aprovada pela Meta; única forma de iniciar
+                   conversa fora da janela de 24h (usado no devocional diário).
+
+Observação sobre a janela de 24h:
+A Meta só deixa você mandar texto livre se a pessoa te enviou alguma mensagem
+nas últimas 24 horas. Passou disso, só template aprovado. Por isso o devocional
+(que vai pra pessoa "do nada") precisa ser template.
+"""
+
+import logging
+
+import httpx
+
+from config import (
+    GRAPH_API_VERSION,
+    WHATSAPP_PHONE_NUMBER_ID,
+    WHATSAPP_TOKEN,
+)
+
+logger = logging.getLogger("davi.whatsapp")
+
+# Endereço base da API da Meta pra enviar mensagens deste número.
+BASE_URL = f"https://graph.facebook.com/{GRAPH_API_VERSION}/{WHATSAPP_PHONE_NUMBER_ID}/messages"
+
+
+def _headers():
+    """Cabeçalhos de autenticação exigidos pela Meta."""
+    return {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+
+def enviar_texto(telefone, texto):
+    """
+    Envia uma mensagem de TEXTO simples pra pessoa.
+
+    telefone: número no formato internacional, só dígitos (ex.: "5511999998888").
+    texto: o conteúdo da mensagem.
+
+    Retorna True se a Meta aceitou, False se deu erro (o erro é registrado no log).
+    """
+    corpo = {
+        "messaging_product": "whatsapp",
+        "to": telefone,
+        "type": "text",
+        "text": {"body": texto},
+    }
+
+    try:
+        resposta = httpx.post(BASE_URL, headers=_headers(), json=corpo, timeout=30)
+        resposta.raise_for_status()
+        return True
+    except httpx.HTTPError as erro:
+        # Mostra no log o que a Meta respondeu, pra facilitar achar o problema.
+        detalhe = getattr(erro, "response", None)
+        corpo_erro = detalhe.text if detalhe is not None else str(erro)
+        logger.error("Falha ao enviar texto pelo WhatsApp: %s", corpo_erro)
+        return False
+
+
+def enviar_template(telefone, nome_template, variaveis=None, idioma="pt_BR"):
+    """
+    Envia uma mensagem de TEMPLATE (pré-aprovada na Meta).
+
+    telefone: número internacional só com dígitos.
+    nome_template: o nome exato do template aprovado (ex.: "devocional_diario").
+    variaveis: lista de textos que preenchem as variáveis do corpo, na ordem
+               ({{1}}, {{2}}, ...). Pro devocional, é uma lista com um texto só.
+    idioma: código do idioma do template (o nosso é "pt_BR").
+
+    Retorna True se aceitou, False se deu erro.
+    """
+    variaveis = variaveis or []
+
+    # Monta os "components" só se houver variáveis no corpo do template.
+    components = []
+    if variaveis:
+        components.append(
+            {
+                "type": "body",
+                "parameters": [{"type": "text", "text": v} for v in variaveis],
+            }
+        )
+
+    corpo = {
+        "messaging_product": "whatsapp",
+        "to": telefone,
+        "type": "template",
+        "template": {
+            "name": nome_template,
+            "language": {"code": idioma},
+            "components": components,
+        },
+    }
+
+    try:
+        resposta = httpx.post(BASE_URL, headers=_headers(), json=corpo, timeout=30)
+        resposta.raise_for_status()
+        return True
+    except httpx.HTTPError as erro:
+        detalhe = getattr(erro, "response", None)
+        corpo_erro = detalhe.text if detalhe is not None else str(erro)
+        logger.error("Falha ao enviar template pelo WhatsApp: %s", corpo_erro)
+        return False
