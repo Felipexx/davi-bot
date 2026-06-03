@@ -111,9 +111,22 @@ def _processar_evento(dados):
         # Formato inesperado: ignora com segurança.
         return
 
-    # Se não tem "messages", é só uma notificação de status de entrega -> ignora.
+    # Se não tem "messages", pode ser uma notificação de STATUS de entrega
+    # (enviado / entregue / lido / FALHOU). A gente registra no log o que vier,
+    # principalmente as falhas — é aqui que a Meta diz POR QUE uma mensagem não
+    # chegou na pessoa (ex.: número não confirmado, fora da janela de 24h, etc.).
     mensagens = valor.get("messages")
     if not mensagens:
+        for status in valor.get("statuses", []):
+            situacao = status.get("status")          # sent / delivered / read / failed
+            destino = status.get("recipient_id")     # pra qual número
+            erros = status.get("errors")             # detalhe, quando falha
+            if erros:
+                logger.error(
+                    "ENTREGA FALHOU para %s (status=%s): %s", destino, situacao, erros
+                )
+            else:
+                logger.info("Status de entrega para %s: %s", destino, situacao)
         return
 
     mensagem = mensagens[0]

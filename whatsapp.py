@@ -55,6 +55,8 @@ def enviar_texto(telefone, texto):
         "text": {"body": texto},
     }
 
+    logger.info("Enviando resposta de texto para o numero: %s", telefone)
+
     try:
         resposta = httpx.post(BASE_URL, headers=_headers(), json=corpo, timeout=30)
         resposta.raise_for_status()
