@@ -16,6 +16,8 @@ nas últimas 24 horas. Passou disso, só template aprovado. Por isso o devociona
 """
 
 import logging
+import re
+import time
 
 import httpx
 
@@ -67,6 +69,42 @@ def enviar_texto(telefone, texto):
         corpo_erro = detalhe.text if detalhe is not None else str(erro)
         logger.error("Falha ao enviar texto pelo WhatsApp: %s", corpo_erro)
         return False
+
+
+def _dividir_em_blocos(texto, maximo=4):
+    """
+    Divide a resposta do Davi em "balões" curtos, separados por linha em branco.
+    Assim ele manda várias mensagens curtinhas (como no WhatsApp), em vez de um textão.
+    """
+    if not texto:
+        return []
+    # Separa onde houver uma linha em branco (uma ou mais quebras de linha vazias).
+    partes = [p.strip() for p in re.split(r"\n\s*\n", texto) if p.strip()]
+    if not partes:
+        return [texto.strip()]
+    # Se vier mais blocos que o máximo, junta o excedente no último (não perde texto).
+    if len(partes) > maximo:
+        partes = partes[: maximo - 1] + ["\n\n".join(partes[maximo - 1:])]
+    return partes
+
+
+def enviar_texto_em_blocos(telefone, texto, pausa=1.5):
+    """
+    Envia a resposta dividida em várias mensagens curtas (vários balões), com uma
+    pequena pausa entre elas pra chegarem em ordem e parecer mais natural.
+    Retorna True se todos os blocos foram enviados com sucesso.
+    """
+    blocos = _dividir_em_blocos(texto)
+    if not blocos:
+        return False
+
+    todos_ok = True
+    for i, bloco in enumerate(blocos):
+        if i > 0:
+            time.sleep(pausa)  # pequena pausa entre uma mensagem e outra
+        ok = enviar_texto(telefone, bloco)
+        todos_ok = todos_ok and ok
+    return todos_ok
 
 
 def enviar_template(telefone, nome_template, variaveis=None, idioma="pt_BR"):
