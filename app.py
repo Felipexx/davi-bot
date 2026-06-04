@@ -132,6 +132,12 @@ def _processar_evento(dados):
     mensagem = mensagens[0]
     telefone = mensagem.get("from")
     tipo = mensagem.get("type")
+    message_id = mensagem.get("id")
+
+    # Marca a mensagem da pessoa como LIDA (tique azul), assim ela vê que o Davi
+    # recebeu e está cuidando dela.
+    if message_id:
+        whatsapp.marcar_como_lido(message_id)
 
     # Tenta descobrir o nome da pessoa (vem no perfil do contato).
     nome = "amigo(a)"

@@ -71,6 +71,34 @@ def enviar_texto(telefone, texto):
         return False
 
 
+def marcar_como_lido(message_id):
+    """
+    Marca a mensagem recebida como LIDA — é o "tique azul" que aparece no
+    WhatsApp da pessoa, mostrando que o Davi viu a mensagem dela.
+
+    message_id: o identificador da mensagem (campo "id" que vem no webhook).
+    Retorna True se deu certo, False se deu erro.
+    """
+    if not message_id:
+        return False
+
+    corpo = {
+        "messaging_product": "whatsapp",
+        "status": "read",
+        "message_id": message_id,
+    }
+
+    try:
+        resposta = httpx.post(BASE_URL, headers=_headers(), json=corpo, timeout=30)
+        resposta.raise_for_status()
+        return True
+    except httpx.HTTPError as erro:
+        detalhe = getattr(erro, "response", None)
+        corpo_erro = detalhe.text if detalhe is not None else str(erro)
+        logger.error("Falha ao marcar mensagem como lida: %s", corpo_erro)
+        return False
+
+
 def _dividir_em_blocos(texto, maximo=4):
     """
     Divide a resposta do Davi em "balões" curtos, separados por linha em branco.
