@@ -71,12 +71,14 @@ def enviar_texto(telefone, texto):
         return False
 
 
-def marcar_como_lido(message_id):
+def marcar_como_lido(message_id, mostrar_digitando=True):
     """
-    Marca a mensagem recebida como LIDA — é o "tique azul" que aparece no
-    WhatsApp da pessoa, mostrando que o Davi viu a mensagem dela.
+    Marca a mensagem recebida como LIDA (o "tique azul") e, de quebra, mostra o
+    "digitando..." pra pessoa enquanto o Davi prepara a resposta.
 
     message_id: o identificador da mensagem (campo "id" que vem no webhook).
+    mostrar_digitando: se True, exibe o "digitando..." (some sozinho quando o
+        Davi envia a resposta, ou depois de uns 25 segundos).
     Retorna True se deu certo, False se deu erro.
     """
     if not message_id:
@@ -87,6 +89,9 @@ def marcar_como_lido(message_id):
         "status": "read",
         "message_id": message_id,
     }
+    # Pede pra mostrar o "digitando..." junto com o "lido" (mesma chamada).
+    if mostrar_digitando:
+        corpo["typing_indicator"] = {"type": "text"}
 
     try:
         resposta = httpx.post(BASE_URL, headers=_headers(), json=corpo, timeout=30)

@@ -134,10 +134,10 @@ def _processar_evento(dados):
     tipo = mensagem.get("type")
     message_id = mensagem.get("id")
 
-    # Marca a mensagem da pessoa como LIDA (tique azul), assim ela vê que o Davi
-    # recebeu e está cuidando dela.
+    # Marca a mensagem como LIDA (tique azul) e mostra o "digitando..." enquanto
+    # o Davi prepara a resposta. O "digitando..." some sozinho quando ele responde.
     if message_id:
-        whatsapp.marcar_como_lido(message_id)
+        whatsapp.marcar_como_lido(message_id, mostrar_digitando=True)
 
     # Tenta descobrir o nome da pessoa (vem no perfil do contato).
     nome = "amigo(a)"
