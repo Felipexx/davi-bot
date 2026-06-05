@@ -11,6 +11,7 @@ Usamos o SDK oficial do Google "google-genai".
 """
 
 import logging
+from datetime import date
 
 from google import genai
 from google.genai import types
@@ -71,20 +72,57 @@ def gerar_resposta(historico):
     return texto
 
 
+# Temas que vão rodando ao longo dos dias, pra o devocional ter variedade e não
+# ficar repetitivo. Você pode editar/adicionar temas à vontade.
+TEMAS_DEVOCIONAL = [
+    "recomeços e novos começos",
+    "ansiedade e confiar em Deus",
+    "gratidão no dia a dia",
+    "perdão — dar e receber",
+    "esperança em tempos difíceis",
+    "o descanso e a paz que vêm de Deus",
+    "medo e coragem na fé",
+    "o amor ao próximo",
+    "perseverança e uma fé que não desiste",
+    "o cuidado de Deus, como um pastor",
+    "propósito e direção para a vida",
+    "humildade e entregar o controle a Deus",
+    "consolo na dor e no luto",
+    "a alegria que vem do Senhor",
+    "fé enquanto se espera por uma resposta",
+    "arrependimento e graça",
+    "confiança quando falta clareza",
+    "força para recomeçar depois de uma queda",
+    "paciência consigo mesmo",
+    "a presença de Deus na solidão",
+]
+
+
 def gerar_devocional():
     """
-    Gera o texto do devocional do dia (um versículo + uma reflexão curta).
+    Gera o devocional do dia: uma reflexão cristã mais profunda (3-4 parágrafos)
+    sobre um tema que vai rodando a cada dia, terminando com um versículo real.
     Usado pelo script devocional_diario.py.
 
     Não recebe histórico: é um pedido único e independente. Se a IA falhar,
     levanta erro — o script do devocional tem uma lista de reserva pra esse caso.
     """
+    # Escolhe o tema do dia rodando pela lista (muda todo dia, sem repetir cedo).
+    tema = TEMAS_DEVOCIONAL[date.today().toordinal() % len(TEMAS_DEVOCIONAL)]
+
     pedido = (
-        "Escreva um devocional curto para enviar por WhatsApp a um cristão. "
-        "Comece com um versículo bíblico real (com a referência: livro, capítulo "
-        "e versículo), seguido de uma reflexão calorosa de 2 a 4 frases e uma "
-        "frase final de incentivo. Tom acolhedor, simples e esperançoso. "
-        "No máximo cerca de 60 palavras no total. Não use asteriscos nem títulos."
+        "Escreva o DEVOCIONAL CRISTÃO de hoje para enviar no WhatsApp. "
+        f"Tema de hoje: {tema}.\n\n"
+        "Como deve ser:\n"
+        "- 3 a 4 parágrafos curtos, calorosos e pessoais (fale com 'você').\n"
+        "- 1º parágrafo: uma reflexão humana e acolhedora sobre o tema, algo com que a pessoa realmente se identifique.\n"
+        "- 2º: o que a Palavra de Deus mostra sobre isso, de forma simples e esperançosa (centrado na Bíblia e em Jesus).\n"
+        "- 3º: um incentivo prático e gentil para viver isso hoje.\n"
+        "- Na ÚLTIMA linha, cite um versículo bíblico real e relacionado, exatamente neste formato: "
+        "Referência: Livro Capítulo:versículo\n\n"
+        "Regras: cerca de 150 a 220 palavras. Sem título, sem asteriscos, sem listas, no "
+        "máximo 1 emoji. Base evangélica — não cite outras doutrinas. Escreva um texto novo "
+        "e original a cada vez (não repita frases prontas)."
     )
 
     resposta = _get_client().models.generate_content(
@@ -92,8 +130,8 @@ def gerar_devocional():
         contents=pedido,
         config=types.GenerateContentConfig(
             system_instruction=DAVI_PERSONA,
-            temperature=0.9,
-            max_output_tokens=300,
+            temperature=1.0,
+            max_output_tokens=700,
         ),
     )
 

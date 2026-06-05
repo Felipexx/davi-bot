@@ -87,8 +87,8 @@ def main():
     # Gera UM texto do dia e envia o mesmo pra todo mundo (mais barato e coerente).
     texto = obter_texto_do_dia()
     # Convida a pessoa a responder, pra então receber a oração em áudio.
-    # (Sem quebras de linha: parâmetros de template do WhatsApp não aceitam "\n".)
-    texto = texto + " 💬 Quer ouvir a oração de hoje em áudio? É só me responder aqui. 🙏"
+    # (Agora vai como texto livre, então podemos usar quebra de linha.)
+    texto = texto + "\n\n💬 Quer ouvir a oração de hoje em áudio? É só me responder aqui. 🙏"
     logger.info("Devocional do dia: %s", texto)
 
     # Saudação que vai junto (no texto livre podemos usar quebra de linha à vontade).
