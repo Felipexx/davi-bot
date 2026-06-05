@@ -329,3 +329,21 @@ async def admin_assinante(request: Request, x_admin_token: str = Header(default=
     db.set_assinante(telefone, ativo=ativo, expira_em=expira_em)
     logger.info("Admin atualizou assinante: %s -> ativo=%s", telefone, ativo)
     return {"status": "ok", "telefone": telefone, "ativo": ativo}
+
+
+# ----------------------------------------------------------------------
+# Tarefa: dispara o devocional do dia (chamado por um agendador externo, ex.:
+# cron-job.org). Protegido por token. Aceita GET ou POST pra funcionar com
+# qualquer agendador. Roda em segundo plano e responde rápido.
+#
+# Use a URL:  https://SEU-BOT.onrender.com/tarefas/devocional?token=SEU_ADMIN_TOKEN
+# ----------------------------------------------------------------------
+@app.api_route("/tarefas/devocional", methods=["GET", "POST"])
+async def rodar_devocional(background_tasks: BackgroundTasks, token: str = ""):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=403, detail="Token inválido.")
+
+    import devocional_diario  # importa aqui pra evitar import circular
+    background_tasks.add_task(devocional_diario.main)
+    logger.info("Devocional disparado pelo agendador.")
+    return {"status": "devocional disparado"}
