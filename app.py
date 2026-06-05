@@ -26,6 +26,7 @@ import whatsapp
 from assinaturas import checar_acesso
 from config import (
     ADMIN_TOKEN,
+    AUDIO_ORACAO_URL,
     FREE_MESSAGES,
     LINK_ASSINATURA,
     PAYMENT_WEBHOOK_SECRET,
@@ -191,6 +192,20 @@ def _processar_evento(dados):
                 time.sleep(1.2)  # pequena pausa pra os balões chegarem em ordem
             whatsapp.enviar_texto(telefone, parte)
         db.marcar_convite_enviado(telefone)  # não repetir o pitch nas próximas
+        return
+
+    # A pessoa respondeu ao devocional da manhã? Então manda a oração em áudio
+    # agora (fluxo "responda pra receber") e encerra por aqui.
+    if db.tem_oracao_pendente(telefone):
+        db.limpar_oracao_pendente(telefone)
+        if AUDIO_ORACAO_URL:
+            whatsapp.enviar_texto(telefone, "Aqui está a oração de hoje, pra você ouvir com calma. 🙏")
+            whatsapp.enviar_audio(telefone, AUDIO_ORACAO_URL)
+        else:
+            whatsapp.enviar_texto(
+                telefone,
+                "Que a paz de Deus guarde o seu coração hoje. 🙏",
+            )
         return
 
     # Se a liberação foi por "mensagem grátis", conta +1 nas usadas.

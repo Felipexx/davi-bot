@@ -86,6 +86,9 @@ def main():
 
     # Gera UM texto do dia e envia o mesmo pra todo mundo (mais barato e coerente).
     texto = obter_texto_do_dia()
+    # Convida a pessoa a responder, pra então receber a oração em áudio.
+    # (Sem quebras de linha: parâmetros de template do WhatsApp não aceitam "\n".)
+    texto = texto + " 💬 Quer ouvir a oração de hoje em áudio? É só me responder aqui. 🙏"
     logger.info("Devocional do dia: %s", texto)
 
     enviados = 0
@@ -101,6 +104,9 @@ def main():
             enviados += 1
             # Também guarda no histórico, pra manter a memória da conversa.
             db.salvar_mensagem(telefone, "model", texto)
+            # Deixa a oração em áudio "pendente": será enviada quando a pessoa
+            # responder a esta mensagem (fluxo "responda pra receber").
+            db.marcar_oracao_pendente(telefone)
         else:
             falhas += 1
 

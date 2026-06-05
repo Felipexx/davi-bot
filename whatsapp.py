@@ -71,6 +71,33 @@ def enviar_texto(telefone, texto):
         return False
 
 
+def enviar_audio(telefone, link):
+    """
+    Envia um ÁUDIO (por link público) pra pessoa — toca dentro do WhatsApp.
+
+    Só funciona dentro da janela de 24h (a pessoa precisa ter te mandado mensagem
+    recentemente) — por isso usamos no fluxo "responda pra receber a oração".
+    Formatos aceitos pela Meta: mp3 (audio/mpeg), aac, m4a, amr, ogg (codec opus).
+
+    link: URL pública do arquivo de áudio.
+    """
+    corpo = {
+        "messaging_product": "whatsapp",
+        "to": telefone,
+        "type": "audio",
+        "audio": {"link": link},
+    }
+    try:
+        resposta = httpx.post(BASE_URL, headers=_headers(), json=corpo, timeout=30)
+        resposta.raise_for_status()
+        return True
+    except httpx.HTTPError as erro:
+        detalhe = getattr(erro, "response", None)
+        corpo_erro = detalhe.text if detalhe is not None else str(erro)
+        logger.error("Falha ao enviar áudio pelo WhatsApp: %s", corpo_erro)
+        return False
+
+
 def marcar_como_lido(message_id, mostrar_digitando=True):
     """
     Marca a mensagem recebida como LIDA (o "tique azul") e, de quebra, mostra o

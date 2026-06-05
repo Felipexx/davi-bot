@@ -112,6 +112,17 @@ def init_db():
         """
     )
 
+    # Quem recebeu o devocional e ainda não recebeu a oração em áudio
+    # (o áudio é enviado quando a pessoa responder — fluxo "responda pra receber").
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS oracao_pendente (
+            telefone TEXT PRIMARY KEY,
+            criado_em TEXT
+        )
+        """
+    )
+
     conexao.commit()
     conexao.close()
 
@@ -140,6 +151,43 @@ def marcar_convite_enviado(telefone):
         """,
         (telefone, _agora_iso()),
     )
+    conexao.commit()
+    conexao.close()
+
+
+# -------------------- Oração pendente (devocional -> áudio) --------------------
+
+def marcar_oracao_pendente(telefone):
+    """Marca que a pessoa recebeu o devocional e pode receber a oração em áudio ao responder."""
+    conexao = _conectar()
+    cursor = _cursor(conexao)
+    cursor.execute(
+        f"""
+        INSERT INTO oracao_pendente (telefone, criado_em)
+        VALUES ({PH}, {PH})
+        ON CONFLICT(telefone) DO UPDATE SET criado_em = excluded.criado_em
+        """,
+        (telefone, _agora_iso()),
+    )
+    conexao.commit()
+    conexao.close()
+
+
+def tem_oracao_pendente(telefone):
+    """Diz se a pessoa tem uma oração em áudio esperando pra ser enviada."""
+    conexao = _conectar()
+    cursor = _cursor(conexao)
+    cursor.execute(f"SELECT 1 FROM oracao_pendente WHERE telefone = {PH}", (telefone,))
+    linha = cursor.fetchone()
+    conexao.close()
+    return linha is not None
+
+
+def limpar_oracao_pendente(telefone):
+    """Remove a marca de oração pendente (depois que o áudio foi enviado)."""
+    conexao = _conectar()
+    cursor = _cursor(conexao)
+    cursor.execute(f"DELETE FROM oracao_pendente WHERE telefone = {PH}", (telefone,))
     conexao.commit()
     conexao.close()
 

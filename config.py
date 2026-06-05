@@ -47,6 +47,8 @@ FREE_MESSAGES = int(os.getenv("FREE_MESSAGES", "1"))
 LINK_ASSINATURA = os.getenv("LINK_ASSINATURA", "https://seusite.com/assinar")
 # Nome do template do devocional aprovado na Meta (categoria Utility, pt_BR).
 DEVOTIONAL_TEMPLATE_NAME = os.getenv("DEVOTIONAL_TEMPLATE_NAME", "devocional_diario")
+# URL pública do áudio da oração do dia (enviado quando a pessoa responde ao devocional).
+AUDIO_ORACAO_URL = os.getenv("AUDIO_ORACAO_URL", "")
 
 
 # -------------------- Banco de dados e segurança --------------------
