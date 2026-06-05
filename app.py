@@ -212,8 +212,8 @@ def _processar_evento(dados):
     if acesso["motivo"] == "gratis":
         db.incrementar_gratis(telefone)
 
-    # Monta o contexto: últimas ~12 mensagens (a persona entra dentro da ia.py).
-    historico = db.ultimas_mensagens(telefone, limite=12)
+    # Monta o contexto: últimas ~30 mensagens (a persona entra dentro da ia.py).
+    historico = db.ultimas_mensagens(telefone, limite=30)
 
     # Chama a IA. Se falhar, manda uma mensagem simpática de erro.
     try:
