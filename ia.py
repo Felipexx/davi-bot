@@ -58,7 +58,10 @@ def gerar_resposta(historico):
         config=types.GenerateContentConfig(
             system_instruction=DAVI_PERSONA,  # a personalidade do Davi
             temperature=0.6,                  # mais baixa = mais direto, menos repetição
-            max_output_tokens=500,            # tamanho máximo da resposta
+            max_output_tokens=800,            # tamanho máximo da resposta
+            # Desliga o "thinking" do Gemini 2.5 (a conversa não precisa, e ele
+            # estava comendo o limite de tokens e cortando a resposta no meio).
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
         ),
     )
 
@@ -131,7 +134,10 @@ def gerar_devocional():
         config=types.GenerateContentConfig(
             system_instruction=DAVI_PERSONA,
             temperature=1.0,
-            max_output_tokens=700,
+            max_output_tokens=900,
+            # Desliga o "thinking" do Gemini 2.5 (estava consumindo o limite e
+            # deixando o devocional curto demais).
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
         ),
     )
 
