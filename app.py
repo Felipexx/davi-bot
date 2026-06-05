@@ -227,10 +227,9 @@ def _processar_evento(dados):
         return
 
     # Guarda a resposta do Davi no histórico (papel "model") e envia.
-    # Enviamos em BLOCOS: várias mensagens curtas separadas (como no WhatsApp),
-    # em vez de um único textão. O Davi separa os blocos com uma linha em branco.
+    # Enviamos como UMA mensagem só (mais natural e sem risco de repetir balões).
     db.salvar_mensagem(telefone, "model", resposta)
-    enviou = whatsapp.enviar_texto_em_blocos(telefone, resposta)
+    enviou = whatsapp.enviar_texto(telefone, resposta)
 
     if not enviou:
         logger.error("A resposta foi gerada, mas falhou ao enviar pelo WhatsApp.")

@@ -57,7 +57,7 @@ def gerar_resposta(historico):
         contents=contents,
         config=types.GenerateContentConfig(
             system_instruction=DAVI_PERSONA,  # a personalidade do Davi
-            temperature=0.8,                  # quão "criativa"/variada é a resposta
+            temperature=0.6,                  # mais baixa = mais direto, menos repetição
             max_output_tokens=500,            # tamanho máximo da resposta
         ),
     )
