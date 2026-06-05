@@ -42,7 +42,7 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 # -------------------- Regras do produto --------------------
 # Quantas mensagens grátis uma pessoa que ainda não assinou pode mandar.
-FREE_MESSAGES = int(os.getenv("FREE_MESSAGES", "3"))
+FREE_MESSAGES = int(os.getenv("FREE_MESSAGES", "1"))
 # Link pra onde a pessoa vai pra assinar (sua página de pagamento).
 LINK_ASSINATURA = os.getenv("LINK_ASSINATURA", "https://seusite.com/assinar")
 # Nome do template do devocional aprovado na Meta (categoria Utility, pt_BR).

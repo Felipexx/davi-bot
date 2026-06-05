@@ -16,6 +16,7 @@ Endereços (endpoints) deste servidor:
 """
 
 import logging
+import time
 
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request, Response
 
@@ -166,15 +167,19 @@ def _processar_evento(dados):
     acesso = checar_acesso(telefone)
 
     if not acesso["liberado"]:
-        # Acabaram as mensagens grátis -> convida pra assinar, SEM chamar a IA.
-        convite = (
-            "Gostei muito de conversar com você! 💙\n\n"
-            "Pra gente seguir conversando sempre que você precisar, com uma "
-            "palavra de ânimo e uma oração, dá uma olhadinha aqui:\n"
-            f"{LINK_ASSINATURA}\n\n"
-            "Sem pressa e sem pressão. Vou estar por aqui. 🙏"
-        )
-        whatsapp.enviar_texto(telefone, convite)
+        # Acabaram as mensagens grátis -> envia o convite pra assinar (SEM chamar a IA),
+        # em vários balõezinhos curtos, como numa conversa de verdade.
+        intro = [
+            "Que bom ter você aqui comigo. 🙏",
+            "Esse cantinho é onde a gente pode conversar de perto — sobre o que pesa no coração, sobre a vida e sobre a fé, no seu tempo.",
+            "Essa foi a forma que encontrei de manter esse trabalho de pé. Não pense como uma cobrança, e sim como um jeito de cuidar comigo desse espaço — e de levar essa mensagem de fé e de amparo a ainda mais pessoas.",
+            "O valor é simbólico perto de tudo que a gente pode viver junto: R$ 19,90 por mês, ou R$ 190,90 no ano todo — que te dá 2 meses de presente pra caminhar comigo por mais tempo.",
+            f"Quando sentir que é a hora, é por aqui:\n{LINK_ASSINATURA}\n\nE se não for agora, tudo bem. Você é importante pra mim do mesmo jeito. 💙",
+        ]
+        for i, parte in enumerate(intro):
+            if i > 0:
+                time.sleep(1.2)  # pequena pausa pra os balões chegarem em ordem
+            whatsapp.enviar_texto(telefone, parte)
         return
 
     # Se a liberação foi por "mensagem grátis", conta +1 nas usadas.
