@@ -1,28 +1,51 @@
 """
 db.py
 -----
-Tudo que mexe no banco de dados (SQLite) fica aqui, isolado do resto.
+Tudo que mexe no banco de dados fica aqui, isolado do resto.
 
-Por que isolar? Pra você poder, no futuro, trocar o SQLite por um banco maior
-(ex.: Postgres) mexendo SÓ neste arquivo, sem bagunçar o resto do bot.
+Suporta DOIS bancos, escolhido automaticamente:
+- Se existir a variável de ambiente DATABASE_URL  -> usa PostgreSQL (recomendado em
+  produção: os dados ficam num banco externo e NUNCA se perdem quando o servidor reinicia).
+- Se NÃO existir DATABASE_URL                     -> usa SQLite (arquivo local davi.db),
+  bom para testar na sua máquina.
 
-SQLite é um banco que vive num único arquivo (ex.: davi.db). É simples e perfeito
-pra começar. Cada função abre uma conexão, faz o que precisa e fecha — assim
-funciona bem mesmo com várias mensagens chegando ao mesmo tempo.
+As funções têm a mesma "cara" nos dois casos, então o resto do bot não muda nada.
 """
 
-import sqlite3
+import os
 from datetime import datetime, timezone
 
 from config import DATABASE_PATH
 
+# Decide qual banco usar com base na presença da DATABASE_URL.
+DATABASE_URL = os.getenv("DATABASE_URL")
+USE_PG = bool(DATABASE_URL)
+
+if USE_PG:
+    import psycopg2
+    import psycopg2.extras
+else:
+    import sqlite3
+
+# Marcador de parâmetro: Postgres usa %s, SQLite usa ?.
+PH = "%s" if USE_PG else "?"
+
 
 def _conectar():
-    """Abre uma conexão com o banco. Uso interno (o "_" indica isso)."""
+    """Abre uma conexão com o banco escolhido. Uso interno (o "_" indica isso)."""
+    if USE_PG:
+        return psycopg2.connect(DATABASE_URL)
     conexao = sqlite3.connect(DATABASE_PATH)
     # row_factory faz cada linha vir como um dicionário-like (acesso por nome de coluna).
     conexao.row_factory = sqlite3.Row
     return conexao
+
+
+def _cursor(conexao):
+    """Cria um cursor que devolve linhas acessíveis por nome de coluna nos dois bancos."""
+    if USE_PG:
+        return conexao.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    return conexao.cursor()
 
 
 def _agora_iso():
@@ -37,7 +60,10 @@ def init_db():
     Chamado quando o app sobe e no início dos scripts (ex.: devocional).
     """
     conexao = _conectar()
-    cursor = conexao.cursor()
+    cursor = _cursor(conexao)
+
+    # Tipo da coluna de id autoincremental muda entre os bancos.
+    id_auto = "SERIAL PRIMARY KEY" if USE_PG else "INTEGER PRIMARY KEY AUTOINCREMENT"
 
     # Pessoas que conversam com o Davi.
     cursor.execute(
@@ -65,11 +91,11 @@ def init_db():
 
     # Histórico de conversa (pra dar "memória" ao Davi).
     cursor.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS mensagens (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id {id_auto},
             telefone TEXT,
-            papel TEXT,        -- "user" (pessoa) ou "model" (Davi)
+            papel TEXT,
             texto TEXT,
             criado_em TEXT
         )
@@ -88,11 +114,11 @@ def upsert_usuario(telefone, nome):
     ("upsert" = update + insert.)
     """
     conexao = _conectar()
-    cursor = conexao.cursor()
+    cursor = _cursor(conexao)
     cursor.execute(
-        """
+        f"""
         INSERT INTO usuarios (telefone, nome, mensagens_gratis_usadas, criado_em)
-        VALUES (?, ?, 0, ?)
+        VALUES ({PH}, {PH}, 0, {PH})
         ON CONFLICT(telefone) DO UPDATE SET nome = excluded.nome
         """,
         (telefone, nome, _agora_iso()),
@@ -104,8 +130,8 @@ def upsert_usuario(telefone, nome):
 def get_usuario(telefone):
     """Retorna os dados do usuário como dicionário, ou None se não existir."""
     conexao = _conectar()
-    cursor = conexao.cursor()
-    cursor.execute("SELECT * FROM usuarios WHERE telefone = ?", (telefone,))
+    cursor = _cursor(conexao)
+    cursor.execute(f"SELECT * FROM usuarios WHERE telefone = {PH}", (telefone,))
     linha = cursor.fetchone()
     conexao.close()
     return dict(linha) if linha else None
@@ -114,9 +140,9 @@ def get_usuario(telefone):
 def incrementar_gratis(telefone):
     """Soma 1 no contador de mensagens grátis já usadas pela pessoa."""
     conexao = _conectar()
-    cursor = conexao.cursor()
+    cursor = _cursor(conexao)
     cursor.execute(
-        "UPDATE usuarios SET mensagens_gratis_usadas = mensagens_gratis_usadas + 1 WHERE telefone = ?",
+        f"UPDATE usuarios SET mensagens_gratis_usadas = mensagens_gratis_usadas + 1 WHERE telefone = {PH}",
         (telefone,),
     )
     conexao.commit()
@@ -131,9 +157,9 @@ def salvar_mensagem(telefone, papel, texto):
     papel = "user" pra mensagem da pessoa, "model" pra resposta do Davi.
     """
     conexao = _conectar()
-    cursor = conexao.cursor()
+    cursor = _cursor(conexao)
     cursor.execute(
-        "INSERT INTO mensagens (telefone, papel, texto, criado_em) VALUES (?, ?, ?, ?)",
+        f"INSERT INTO mensagens (telefone, papel, texto, criado_em) VALUES ({PH}, {PH}, {PH}, {PH})",
         (telefone, papel, texto, _agora_iso()),
     )
     conexao.commit()
@@ -148,10 +174,9 @@ def ultimas_mensagens(telefone, limite=12):
     Retorna uma lista de dicionários: [{"role": "user"/"model", "text": "..."}, ...]
     """
     conexao = _conectar()
-    cursor = conexao.cursor()
-    # Pegamos as N mais recentes (DESC) e depois invertemos pra ficar em ordem.
+    cursor = _cursor(conexao)
     cursor.execute(
-        "SELECT papel, texto FROM mensagens WHERE telefone = ? ORDER BY id DESC LIMIT ?",
+        f"SELECT papel, texto FROM mensagens WHERE telefone = {PH} ORDER BY id DESC LIMIT {PH}",
         (telefone, limite),
     )
     linhas = cursor.fetchall()
@@ -169,11 +194,11 @@ def set_assinante(telefone, ativo, expira_em=None):
     ativo = True/False; expira_em = texto ISO da data de expiração (ou None).
     """
     conexao = _conectar()
-    cursor = conexao.cursor()
+    cursor = _cursor(conexao)
     cursor.execute(
-        """
+        f"""
         INSERT INTO assinantes (telefone, ativo, expira_em, atualizado_em)
-        VALUES (?, ?, ?, ?)
+        VALUES ({PH}, {PH}, {PH}, {PH})
         ON CONFLICT(telefone) DO UPDATE SET
             ativo = excluded.ativo,
             expira_em = excluded.expira_em,
@@ -188,8 +213,8 @@ def set_assinante(telefone, ativo, expira_em=None):
 def get_assinante(telefone):
     """Retorna o registro de assinante como dicionário, ou None se não existir."""
     conexao = _conectar()
-    cursor = conexao.cursor()
-    cursor.execute("SELECT * FROM assinantes WHERE telefone = ?", (telefone,))
+    cursor = _cursor(conexao)
+    cursor.execute(f"SELECT * FROM assinantes WHERE telefone = {PH}", (telefone,))
     linha = cursor.fetchone()
     conexao.close()
     return dict(linha) if linha else None
@@ -203,11 +228,11 @@ def listar_assinantes_ativos():
     """
     agora = _agora_iso()
     conexao = _conectar()
-    cursor = conexao.cursor()
+    cursor = _cursor(conexao)
     cursor.execute(
-        """
+        f"""
         SELECT telefone FROM assinantes
-        WHERE ativo = 1 AND (expira_em IS NULL OR expira_em > ?)
+        WHERE ativo = 1 AND (expira_em IS NULL OR expira_em > {PH})
         """,
         (agora,),
     )
