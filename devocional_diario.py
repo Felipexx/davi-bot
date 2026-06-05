@@ -91,26 +91,32 @@ def main():
     texto = texto + " 💬 Quer ouvir a oração de hoje em áudio? É só me responder aqui. 🙏"
     logger.info("Devocional do dia: %s", texto)
 
+    # Saudação que vai junto (no texto livre podemos usar quebra de linha à vontade).
+    saudacao = "Bom dia! 🙏\n\n"
+
     enviados = 0
-    falhas = 0
+    pulados = 0
     for telefone in assinantes:
-        ok = whatsapp.enviar_template(
-            telefone,
-            DEVOTIONAL_TEMPLATE_NAME,
-            variaveis=[texto],   # preenche o {{1}} do template
-            idioma="pt_BR",
-        )
+        # Estratégia econômica: só enviamos pra quem falou com o Davi nas últimas
+        # 24h — assim a mensagem vai como TEXTO LIVRE (grátis). Quem está fora da
+        # janela é pulado (não gastamos com template pago).
+        if not db.mensagem_recente_do_usuario(telefone, horas=24):
+            pulados += 1
+            continue
+
+        ok = whatsapp.enviar_texto(telefone, saudacao + texto)
         if ok:
             enviados += 1
-            # Também guarda no histórico, pra manter a memória da conversa.
+            # Guarda no histórico, pra manter a memória da conversa.
             db.salvar_mensagem(telefone, "model", texto)
-            # Deixa a oração em áudio "pendente": será enviada quando a pessoa
-            # responder a esta mensagem (fluxo "responda pra receber").
+            # Deixa a oração em áudio "pendente" (fluxo "responda pra receber").
             db.marcar_oracao_pendente(telefone)
-        else:
-            falhas += 1
 
-    logger.info("Devocional enviado. Sucesso: %s | Falhas: %s", enviados, falhas)
+    logger.info(
+        "Devocional enviado (grátis, janela 24h). Enviados: %s | Pulados (inativos): %s",
+        enviados,
+        pulados,
+    )
 
 
 # Quando você roda "py devocional_diario.py", isto aqui é executado.

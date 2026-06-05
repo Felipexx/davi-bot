@@ -13,7 +13,7 @@ As funções têm a mesma "cara" nos dois casos, então o resto do bot não muda
 """
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from config import DATABASE_PATH
 
@@ -221,6 +221,24 @@ def get_usuario(telefone):
     linha = cursor.fetchone()
     conexao.close()
     return dict(linha) if linha else None
+
+
+def mensagem_recente_do_usuario(telefone, horas=24):
+    """
+    Diz se a pessoa enviou alguma mensagem nas últimas `horas`.
+    Usado pra saber se ainda estamos na "janela grátis" de 24h do WhatsApp
+    (dentro dela, dá pra mandar mensagem livre sem custo de template).
+    """
+    limite = (datetime.now(timezone.utc) - timedelta(hours=horas)).isoformat()
+    conexao = _conectar()
+    cursor = _cursor(conexao)
+    cursor.execute(
+        f"SELECT 1 FROM mensagens WHERE telefone = {PH} AND papel = {PH} AND criado_em > {PH} LIMIT 1",
+        (telefone, "user", limite),
+    )
+    linha = cursor.fetchone()
+    conexao.close()
+    return linha is not None
 
 
 def incrementar_gratis(telefone):
