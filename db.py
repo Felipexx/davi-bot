@@ -102,6 +102,44 @@ def init_db():
         """
     )
 
+    # Marca quem já recebeu o convite completo (pra não repetir o pitch toda hora).
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS convites_enviados (
+            telefone TEXT PRIMARY KEY,
+            enviado_em TEXT
+        )
+        """
+    )
+
+    conexao.commit()
+    conexao.close()
+
+
+# -------------------- Convite / pitch --------------------
+
+def convite_ja_enviado(telefone):
+    """Diz se a pessoa já recebeu o convite completo (pitch) alguma vez."""
+    conexao = _conectar()
+    cursor = _cursor(conexao)
+    cursor.execute(f"SELECT 1 FROM convites_enviados WHERE telefone = {PH}", (telefone,))
+    linha = cursor.fetchone()
+    conexao.close()
+    return linha is not None
+
+
+def marcar_convite_enviado(telefone):
+    """Registra que a pessoa já recebeu o convite completo (pitch)."""
+    conexao = _conectar()
+    cursor = _cursor(conexao)
+    cursor.execute(
+        f"""
+        INSERT INTO convites_enviados (telefone, enviado_em)
+        VALUES ({PH}, {PH})
+        ON CONFLICT(telefone) DO UPDATE SET enviado_em = excluded.enviado_em
+        """,
+        (telefone, _agora_iso()),
+    )
     conexao.commit()
     conexao.close()
 

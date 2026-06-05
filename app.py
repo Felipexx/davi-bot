@@ -167,7 +167,17 @@ def _processar_evento(dados):
     acesso = checar_acesso(telefone)
 
     if not acesso["liberado"]:
-        # Acabaram as mensagens grátis -> envia o convite pra assinar (SEM chamar a IA),
+        # Já recebeu o convite completo antes? Então manda só um lembrete curtinho,
+        # pra não repetir o pitch inteiro a cada mensagem.
+        if db.convite_ja_enviado(telefone):
+            whatsapp.enviar_texto(
+                telefone,
+                "Quando você sentir que é a hora de seguir comigo, é só por aqui, tá? 🙏\n"
+                f"{LINK_ASSINATURA}",
+            )
+            return
+
+        # Primeira vez que bate no limite -> envia o convite pra assinar (SEM chamar a IA),
         # em vários balõezinhos curtos, como numa conversa de verdade.
         intro = [
             "Que bom ter você aqui comigo. 🙏",
@@ -180,6 +190,7 @@ def _processar_evento(dados):
             if i > 0:
                 time.sleep(1.2)  # pequena pausa pra os balões chegarem em ordem
             whatsapp.enviar_texto(telefone, parte)
+        db.marcar_convite_enviado(telefone)  # não repetir o pitch nas próximas
         return
 
     # Se a liberação foi por "mensagem grátis", conta +1 nas usadas.
