@@ -17,6 +17,23 @@ from config import FREE_MESSAGES
 from db import get_assinante, get_usuario
 
 
+def _variantes_telefone(telefone):
+    """
+    Lida com o "nono dígito" dos celulares brasileiros: o WhatsApp pode entregar
+    o número COM ou SEM o 9 depois do DDD. Aqui geramos as duas formas possíveis,
+    pra reconhecer o assinante não importa em qual formato o número chegou.
+
+    Ex.: "5545991382241" (com 9, 13 díg.) <-> "554591382241" (sem 9, 12 díg.)
+    """
+    tel = "".join(c for c in (telefone or "") if c.isdigit())
+    variantes = [tel]
+    if tel.startswith("55") and len(tel) == 13 and tel[4] == "9":
+        variantes.append(tel[:4] + tel[5:])        # remove o 9 -> 12 dígitos
+    elif tel.startswith("55") and len(tel) == 12:
+        variantes.append(tel[:4] + "9" + tel[4:])  # adiciona o 9 -> 13 dígitos
+    return variantes
+
+
 def _assinatura_valida(registro):
     """
     Diz se um registro de assinante está realmente válido agora
@@ -53,9 +70,10 @@ def checar_acesso(telefone):
     Importante: esta função só CONSULTA. Quem soma +1 nas mensagens grátis usadas
     é o app, depois de confirmar que a mensagem foi de fato uma "grátis".
     """
-    # 1) É assinante ativo?
-    if _assinatura_valida(get_assinante(telefone)):
-        return {"liberado": True, "motivo": "assinante"}
+    # 1) É assinante ativo? (checa as variações do número por causa do 9º dígito)
+    for variante in _variantes_telefone(telefone):
+        if _assinatura_valida(get_assinante(variante)):
+            return {"liberado": True, "motivo": "assinante"}
 
     # 2) Não é assinante: ainda tem mensagem grátis sobrando?
     usuario = get_usuario(telefone)
