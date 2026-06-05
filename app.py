@@ -236,9 +236,33 @@ async def payment_webhook(request: Request, x_webhook_secret: str = Header(defau
         raise HTTPException(status_code=400, detail="Telefone não informado.")
 
     ativo = status in ("ativo", "active", "paid", "approved", "completed")
-    db.set_assinante(telefone, ativo=ativo, expira_em=expira_em)
 
+    # Verifica se a pessoa JÁ era assinante ativa antes de gravar. Assim a
+    # mensagem de boas-vindas só é enviada quando ela ACABOU de virar assinante
+    # (e não a cada renovação ou webhook repetido do mesmo pagamento).
+    registro_atual = db.get_assinante(telefone)
+    ja_era_ativo = bool(registro_atual and registro_atual.get("ativo"))
+
+    db.set_assinante(telefone, ativo=ativo, expira_em=expira_em)
     logger.info("Pagamento processado: %s -> ativo=%s", telefone, ativo)
+
+    # Acabou de virar assinante -> manda uma mensagem de boas-vindas no WhatsApp.
+    if ativo and not ja_era_ativo:
+        boas_vindas = (
+            "🎉 Sua assinatura foi confirmada!\n\n"
+            "Que alegria ter você comigo nessa caminhada de fé. 🙏 A partir de agora "
+            "a gente pode conversar à vontade, sempre que você precisar — pra "
+            "desabafar, orar junto ou buscar uma palavra na Bíblia.\n\n"
+            "É só me mandar uma mensagem quando quiser. Deus te abençoe! 💙"
+        )
+        enviado = whatsapp.enviar_texto_em_blocos(telefone, boas_vindas)
+        if not enviado:
+            logger.warning(
+                "Não consegui enviar as boas-vindas para %s (provavelmente fora da "
+                "janela de 24h do WhatsApp).",
+                telefone,
+            )
+
     return {"status": "ok"}
 
 
