@@ -41,27 +41,6 @@ def _headers():
     }
 
 
-def _normalizar_destino(telefone):
-    """
-    Ajusta números de celular do Brasil pro formato que a Meta usa internamente.
-
-    A Meta ENTREGA o número COM o 9º dígito (ex.: 55 15 99121-8769 = 13 dígitos),
-    mas REGISTRA a conversa SEM esse 9 extra. Se a gente responde com o 9, a Meta
-    trata como outra conversa parada e recusa com o erro 131047 ("fora da janela
-    de 24h"), mesmo a pessoa tendo acabado de falar.
-
-    Por isso, pra números do Brasil no formato 55 + DDD + 9 + 8 dígitos (13 no
-    total, com o 5º dígito = 9), removemos esse 9. Números de fora do Brasil, ou
-    que já vêm sem o 9, não são alterados.
-    """
-    if not telefone:
-        return telefone
-    digitos = re.sub(r"\D", "", str(telefone))
-    if len(digitos) == 13 and digitos.startswith("55") and digitos[4] == "9":
-        return digitos[:4] + digitos[5:]
-    return digitos
-
-
 def enviar_texto(telefone, texto):
     """
     Envia uma mensagem de TEXTO simples pra pessoa.
@@ -71,15 +50,14 @@ def enviar_texto(telefone, texto):
 
     Retorna True se a Meta aceitou, False se deu erro (o erro é registrado no log).
     """
-    destino = _normalizar_destino(telefone)
     corpo = {
         "messaging_product": "whatsapp",
-        "to": destino,
+        "to": telefone,
         "type": "text",
         "text": {"body": texto},
     }
 
-    logger.info("Enviando resposta de texto para o numero: %s", destino)
+    logger.info("Enviando resposta de texto para o numero: %s", telefone)
 
     try:
         resposta = httpx.post(BASE_URL, headers=_headers(), json=corpo, timeout=30)
@@ -105,7 +83,7 @@ def enviar_audio(telefone, link):
     """
     corpo = {
         "messaging_product": "whatsapp",
-        "to": _normalizar_destino(telefone),
+        "to": telefone,
         "type": "audio",
         "audio": {"link": link},
     }
@@ -215,7 +193,7 @@ def enviar_template(telefone, nome_template, variaveis=None, idioma="pt_BR"):
 
     corpo = {
         "messaging_product": "whatsapp",
-        "to": _normalizar_destino(telefone),
+        "to": telefone,
         "type": "template",
         "template": {
             "name": nome_template,

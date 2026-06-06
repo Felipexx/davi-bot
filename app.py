@@ -136,24 +136,6 @@ def _processar_evento(dados):
     tipo = mensagem.get("type")
     message_id = mensagem.get("id")
 
-    # --- DIAGNOSTICO TEMPORARIO (9o digito BR / mensagem antiga reentregue) ---
-    import time as _t
-    _wa_id = None
-    try:
-        _wa_id = valor["contacts"][0].get("wa_id")
-    except (KeyError, IndexError, TypeError):
-        pass
-    _ts = mensagem.get("timestamp")
-    try:
-        _idade = int(_t.time()) - int(_ts)
-    except (TypeError, ValueError):
-        _idade = None
-    logger.info(
-        "DIAG inbound -> from=%s | wa_id=%s | timestamp=%s | idade_segundos=%s | id=%s",
-        telefone, _wa_id, _ts, _idade, message_id,
-    )
-    # --- fim diagnostico ---
-
     # Marca a mensagem como LIDA (tique azul) e mostra o "digitando..." enquanto
     # o Davi prepara a resposta. O "digitando..." some sozinho quando ele responde.
     if message_id:
