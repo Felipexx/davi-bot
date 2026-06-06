@@ -15,7 +15,7 @@ import os
 from dotenv import load_dotenv
 
 # Lê o arquivo .env (se existir) e carrega as variáveis pra memória.
-# Em produção (ex.: Render), as variáveis vêm do painel do serviço e isso aqui
+# Em produção (ex.: Square Cloud), as variáveis vêm do painel do serviço e isso aqui
 # simplesmente não encontra um .env — o que é normal e esperado.
 load_dotenv()
 
